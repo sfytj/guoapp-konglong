@@ -5,4 +5,6 @@
 下载：
 <br />
 [Releases](https://github.com/sfytj/guoapp-konglong/releases/tag/0.0.1)
+<br />
+<img src="https://github.com/sfytj/guoapp-konglong/blob/main/11a754d7-32c5-43a6-81f8-68253d7b3e85.png">
 
