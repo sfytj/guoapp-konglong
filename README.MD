@@ -1,5 +1,7 @@
 本项目改编自 [Xanerix](https://github.com/Xanerix/guoapp) 的源码。
-
+<br />
+无任何后门链接，包括自动检测更新都已去除。
+<br />
 仅提供 安卓/windows 平台成品包。自行下载。
 
 Q群：727289809
