@@ -1,0 +1,72 @@
+name: 接口健康检测
+
+on:
+  schedule:
+    - cron: '0 * * * *'      # 每小时整点执行
+  workflow_dispatch:          # 支持手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 检测接口并记录结果
+        env:
+          TZ: Asia/Shanghai
+        run: |
+          API_URL="https://m.svipys.cn/api/duanju/key?item_id=7704961331710921752&definition=720p"
+          TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+          # 发起请求，同时获取 HTTP 状态码和响应体
+          HTTP_CODE=$(curl -s -o response.json -w '%{http_code}' --max-time 15 "$API_URL")
+
+          STATUS="❌ 失败"
+
+          # 三重校验：HTTP 200 + code==0 + data.urls 存在且非空
+          if [ "$HTTP_CODE" = "200" ]; then
+            CODE_VAL=$(jq -r '.code // empty' response.json 2>/dev/null)
+            HAS_URLS=$(jq -e '.data.urls != null and (.data.urls | length) > 0' response.json 2>/dev/null && echo "yes" || echo "no")
+            if [ "$CODE_VAL" = "0" ] && [ "$HAS_URLS" = "yes" ]; then
+              STATUS="✅ 成功"
+            fi
+          fi
+
+          NEW_LINE="- **${TIMESTAMP}** — ${STATUS}"
+
+          # 确保 README.md 中存在检测区块
+          if ! grep -q '## 接口健康检测' README.md; then
+            echo "" >> README.md
+            echo "## 接口健康检测" >> README.md
+          fi
+
+          # 追加新记录
+          echo "$NEW_LINE" >> README.md
+
+          # 只保留最近 5 条记录（倒序取最新5条再正序写回）
+          SECTION_START=$(grep -n '## 接口健康检测' README.md | head -1 | cut -d: -f1)
+          TOTAL_LINES=$(wc -l < README.md)
+          TAIL_LINES=$((TOTAL_LINES - SECTION_START))
+
+          if [ "$TAIL_LINES" -gt 5 ]; then
+            # 提取标题行 + 最近5条记录
+            head -n "$SECTION_START" README.md > README.tmp
+            tail -n 5 README.md >> README.tmp
+            mv README.tmp README.md
+          fi
+
+      - name: 提交变更
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          if git diff --cached --quiet; then
+            echo "无变更，跳过提交"
+          else
+            git commit -m "chore: 更新接口健康检测记录 $(date '+%Y-%m-%d %H:%M:%S')"
+            git push
+          fi
